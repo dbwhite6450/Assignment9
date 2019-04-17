@@ -1,0 +1,98 @@
+install.packages("XGBoost")
+
+
+
+library(XGBoost)
+
+data(iris)
+
+
+
+
+species = iris$Species
+
+label = as.integer(iris$Species)-1
+
+iris$Species = NULL
+
+
+
+n = nrow(iris)
+
+tr_index = sample(n,floor(0.80*n))
+
+tr_data = as.matrix(iris[tr_index,])
+
+tr_label = label[tr_index]
+
+ts_data = as.matrix(iris[-tr_index,])
+
+ts_label = label[-tr_index]
+
+
+
+xtrain = xgb.DMatrix(data=tr_data,label=tr_label)
+
+xtest = xgb.DMatrix(data=ts_data,label=ts_label)
+
+
+
+num_class = length(levels(species))
+
+
+params = list(
+  
+booster="gbtree",
+  
+objective="multi:softprob",
+  
+eval_metric="mlogloss",
+  
+eta=0.001,
+  
+max_depth=5,
+  
+gamma=3,
+  
+subsample=0.75,
+  
+colsample_bytree=1,
+  
+num_class=num_class
+)
+
+
+
+xfit=xtrain(
+  
+params=params,
+  
+data=xtrain,
+  
+nrounds=10000,
+  
+nthreads=1,
+  
+early_stopping_rounds=10,
+  
+watchlist=list(val1=xtrain,val2=xtest),
+  
+verbose=0
+)
+
+
+
+
+xfit
+
+
+
+xpred = predict(xfit,ts_data,reshape=T)
+
+xpred = as.data.frame(xpred)
+
+colnames(xpred) = levels(species)
+
+xpred$prediction = apply(xpred,1,function(x) colnames(xpred)[which.max(x)])
+
+xpred$label = levels(species)[ts_label+1]
